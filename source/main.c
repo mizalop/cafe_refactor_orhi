@@ -194,7 +194,7 @@ v1.4 se reducen los usuarios a A B y siempre se inicializa con cambio rápido ac
 
 #include "AG5_define.h"
 #include "task_main.h"
-#include "task_motores.h"
+#include "motores.h"
 #include "task_cafe.h"
 #include "task_comunica.h"
 #include "watchdog.h"
@@ -231,7 +231,6 @@ int main(void)
 
 	// Crear tareas del RTOS
 	xTaskCreate(main_task,            "Tarea Principal",    configMINIMAL_STACK_SIZE + 96, NULL, main_task_PRIORITY,     NULL);
-	xTaskCreate(motores_task,         "Tarea Motores",      configMINIMAL_STACK_SIZE,      NULL, motores_task_PRIORITY,  NULL);
 	xTaskCreate(moler_dosificar_task, "Tarea QBA",          configMINIMAL_STACK_SIZE,      NULL, cafe_task_PRIORITY,      NULL);
 	xTaskCreate(watchdog_task,        "Tarea Watchdog",     configMINIMAL_STACK_SIZE,      NULL, watchdog_task_PRIORITY, NULL);
 	xTaskCreate(comunicacion_task,    "Tarea Comunicacion", configMINIMAL_STACK_SIZE + 96, NULL, com_task_PRIORITY,      NULL);

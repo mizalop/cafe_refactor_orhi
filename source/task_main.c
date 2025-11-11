@@ -44,7 +44,7 @@
 #include "pwm.h"
 #include "power.h"
 #include "teclado.h"
-#include "task_motores.h"
+#include "motores.h"
 #include "porta.h"
 #include "task_cafe.h"
 #include "task_dosis.h"

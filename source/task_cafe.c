@@ -32,7 +32,7 @@
 #include "main.h"
 #include "eeprom.h"
 #include "AG5_define.h"
-#include "task_motores.h"
+#include "motores.h"
 #include "task_dosis.h"
 #include "hmi.h"
 #include "rtos_time.h"
@@ -207,18 +207,18 @@ void moler_dosificar_task(void *pvParameters)
 				{
 					// Abrir motor superior y esperar a que termine
 					accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Abrir motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
 					vTaskDelay(TIEMPO_DESCARGA);
 
 					// Cerrar motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Encender Motor AC
 					_motor_ac_on_();
@@ -235,7 +235,7 @@ void moler_dosificar_task(void *pvParameters)
 
 					// Cerrar motor superior y esperar a que termine
 					accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Esperamos que la tarea Lcd este libre, podría estar acabando la animacion
 					// habría que asegurarse de que hay lcd si se metiera un display diferente:
@@ -322,11 +322,11 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Abrir motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 					}
 					// Abrir motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
 					vTaskDelay(TIEMPO_DESCARGA);
@@ -334,7 +334,7 @@ void moler_dosificar_task(void *pvParameters)
 
 					// Cerrar motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Guardar dato de dosificador vacío
 					grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
@@ -354,18 +354,18 @@ void moler_dosificar_task(void *pvParameters)
 				{
 					// Abrir motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
 					vTaskDelay(TIEMPO_DESCARGA);
 
 					// Cerrar motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Abrir motor superior y esperar a que termine
 					accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Preparo la dosis a sumar sobre lo que había en la trampilla
 					// superior para obtener la dosis de 1 café.
@@ -388,7 +388,7 @@ void moler_dosificar_task(void *pvParameters)
 
 					// Cerrar motor superior y esperar a que termine
 					accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 					// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
 					// habría que asegurarse de que hay lcd si se metiera un display diferente:
@@ -441,7 +441,7 @@ void moler_dosificar_task(void *pvParameters)
 
 						// Abrir motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						vTaskDelay(TIEMPO_DESCARGA);
 						// Esperamos que la tarea  Lcd este libre, podría estar acabando la animacion
@@ -452,7 +452,7 @@ void moler_dosificar_task(void *pvParameters)
 
 						// Cerrar motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// No se limpia pantalla en todos los casos, este si
 						incrementar_contadores(orhi_msg.servicio);
@@ -462,14 +462,14 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Abrir motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						escribir_ln_id_box(eTXT_ONDE, getVar(TIPO_SERVICIO));	// Mensaje al display
 						vTaskDelay(TIEMPO_DESCARGA);
 
 						// Cerrar motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Termina la secuencia de cambio de tipo servicio
 						grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
@@ -479,18 +479,18 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Abrir motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));  // Display caja vacia
 						vTaskDelay(TIEMPO_DESCARGA);
 
 						// Cerrar motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Abrir motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Preparo la dosis a sumar sobre lo que había en la trampilla
 						// superior para obtener la dosis de 1 café.
@@ -542,7 +542,7 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Cerrar motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Encender Motor AC
 						_motor_ac_on_();
@@ -563,7 +563,7 @@ void moler_dosificar_task(void *pvParameters)
 
 						// Cerrar motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
 						// habría que asegurarse de que hay lcd si se metiera un display diferente:
@@ -598,7 +598,7 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Cerrar motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Calcular tiempo de molido restante
 						tiempo_moliendo = dosis_2c - dosis_1c;

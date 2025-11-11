@@ -66,20 +66,14 @@ typedef enum
  ******************************************************************************/
 
 /**
- * @brief Función que manda una acción a un motor
+ * @brief Función que ejecuta acción de motores
  *
  * @param motor [in]
- *           motor al que se quiere mandar la acción.
+ *           motor que ejecutará la acción.
  * @param accion [in]
- *           acción que se quiere mandar.
- *
- * @return pdTRUE si se ha ejecutado correctamente, si no errQUEUE_FULL.
+ *           acción que se ejecutará.
  */
-BaseType_t accion_motor(MOTOR_e motor, ACCION_e accion);
+void accion_motor(MOTOR_e motor, ACCION_e accion);
 
-/**
- * @brief Tarea del autómata de motores de trampilla superior e inferior.
- */
-void motores_task(void *pvParameters);
 
 #endif /* SOURCE_TASK_MOTORES_H_ */

@@ -23,6 +23,7 @@
  * Includes
  ******************************************************************************/
 
+#include <motores.h>
 #include <stdio.h>
 
 #include "board.h"
@@ -42,7 +43,6 @@
 #include "backlight.h"
 #include "porta.h"
 #include "task_cafe.h"
-#include "task_motores.h"
 #include "task_main.h"
 #include "task_dosis.h"
 #include "task_comunica.h"
@@ -128,7 +128,7 @@ typedef enum
 static void rellenar_salir()
 {
 	accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-	xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
+	//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
 	if (leer_word_eeprom(DIRECC_MODO_TRABAJO) == PREMOLIDO)
 	{
 		escribir_id(eTXT_RECARGAR, PARPADEO_NO);
@@ -138,7 +138,7 @@ static void rellenar_salir()
 		_motor_ac_off_();
 		vTaskDelay(TIME_500MSEC); // Espera caida del café
 		accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-		xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+		//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 		_motor_ac_on_(); // Moler dosis
 		vTaskDelay(leer_word_eeprom(DIRECC_DOSIS_2C) - leer_word_eeprom(DIRECC_DOSIS_1C));
 		_motor_ac_off_();
@@ -926,9 +926,9 @@ void config_task_gb(void *pvParameters)
 					if (tiempo_limpieza < TIME_5MIN) //relativo al cambio de tiempo anterior
 					{  // Se ha pulsado el micro porta seguimos bucle vaciando dosificador
 						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
 						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-						xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
+						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 						if (mensaje_C1 == pdTRUE){
 							escribir_id(eTXT_TECLA_C1, PARPADEO_NO);
 							mensaje_C1 = pdFALSE;
@@ -975,7 +975,7 @@ void config_task_gb(void *pvParameters)
 				{
 					// Nos aseguramos de que la superior está abierta (si se cierra a mano falla)
 					accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-					xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
+					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY); //Espera que termine el motor
 
 					rellenar_salir();
 

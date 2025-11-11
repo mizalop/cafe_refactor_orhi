@@ -35,14 +35,13 @@
  ******************************************************************************/
 
 #define PROGRAM_TYPE           'o'    // o - Orhi (propuesta de notación: i - izaga key, t - izaga tft?, mon - orhi monedero, w - izaga weight, c - izaga connect (ojo: ag6 también tendrá connect))
-#define VERSION_MAJOR           1     // Max 255
-#define VERSION_MINOR           4     // Max 255
-
+#define VERSION_MAJOR           255     // Max 255
+#define VERSION_MINOR           255     // Max 255
+//valor irreal para que se note que no es programa de producción
 
 /* Task priorities. */
 #define main_task_PRIORITY      (configMAX_PRIORITIES - 2)
 #define teclado_task_PRIORITY   (configMAX_PRIORITIES - 1)
-#define motores_task_PRIORITY   (configMAX_PRIORITIES - 3)
 #define pesaje_task_PRIORITY    (configMAX_PRIORITIES - 3)
 #define modbus_task_PRIORITY    (configMAX_PRIORITIES - 1)
 #define cafe_task_PRIORITY      (configMAX_PRIORITIES - 3)

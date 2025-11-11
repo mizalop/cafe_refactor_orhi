@@ -167,7 +167,7 @@ typedef enum
  * Definiciones
  ******************************************************************************/
 
-#define EV_MOTOR          (1 << 0)
+//#define EV_MOTOR          (1 << 0)
 #define EV_FIN_SERV       (1 << 1)
 #define EV_DOSIS          (1 << 2)
 #define EV_CONFIG         (1 << 3)
