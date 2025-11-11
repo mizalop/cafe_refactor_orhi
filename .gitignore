@@ -1,0 +1,15 @@
+/Debug/
+/Release/
+.cproject
+.project
+.default_mex
+/utilities/
+/startup/
+/freertos/
+/drivers/
+/device/
+/component/
+/CMSIS/
+/.settings/
+/.metadata/
+/.mcuxpressoide_packages_support/
