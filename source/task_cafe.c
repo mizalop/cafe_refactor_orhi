@@ -1,33 +1,18 @@
-/**
- * \file task_cafe.c
- * \brief Módulo de autómata de molido y dosificación
+/*
+ * task_cafe2.c
  *
- * \version 1.0
- * \copyright Copyright (c) 2017 ULMA Embedded Solutions. All rights reserved.
- *
- *                       ULMA Embedded Solutions
- *                     ---------------------------
- *                        Embedded Design House
- *
- *                     http://www.ulmaembedded.com
- *                        info@ulmaembedded.com
- *
- *******************************************************************************
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESSED OR IMPLIED WARRANTIES,
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES MERCHANTABILITY AND
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- ******************************************************************************/
+ *  Created on: 11 nov 2025
+ *      Author: mikel
+ */
 
-
-/*******************************************************************************
- * Includes
- ******************************************************************************/
 
 /* FreeRTOS kernel includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "event_groups.h"
+
+#include "fsl_debug_console.h"
 
 #include "main.h"
 #include "eeprom.h"
@@ -40,7 +25,6 @@
 #include "task_main.h"
 
 #include "task_cafe.h"
-
 
 /*******************************************************************************
  * Definiciones
@@ -63,6 +47,26 @@ typedef struct
 
 #define MAXIMO_CONTADORES	   100000000			 // Si no se ha grabado antes vale  0xFFFFFFFF=4.294.967.295
 
+typedef enum{
+	MOLIDO_INF,
+	MOLIDO_SUP,
+	VACIADO_INF,
+	VACIADO_SUP,
+	FINAL,
+	SALIR
+}Accion_Molido_e;
+
+//Definición de secuencias:
+Accion_Molido_e dummy_seq;
+Accion_Molido_e seq_doble_ondemand_nocafe[4] = {MOLIDO_INF,VACIADO_INF,FINAL,SALIR};
+Accion_Molido_e seq_doble_ondemand_t1[4] = {MOLIDO_INF,VACIADO_INF,FINAL,SALIR};
+Accion_Molido_e seq_doble_ondemand_t1t2[4] = {VACIADO_SUP,VACIADO_INF,FINAL,SALIR};
+Accion_Molido_e seq_doble_premolido[6] = {VACIADO_SUP,VACIADO_INF,MOLIDO_INF,MOLIDO_SUP,FINAL,SALIR};
+Accion_Molido_e seq_simple_ondemand_nocafe[4] = {MOLIDO_INF,VACIADO_INF,FINAL,SALIR};
+Accion_Molido_e seq_simple_ondemand_t1[2] = {VACIADO_INF,SALIR};
+Accion_Molido_e seq_simple_ondemand_t1t2[5] = {VACIADO_INF,VACIADO_SUP,MOLIDO_INF,FINAL,SALIR};
+Accion_Molido_e seq_simple_premolido[5] = {VACIADO_INF,MOLIDO_INF,MOLIDO_SUP,FINAL,SALIR};
+
 /*******************************************************************************
  * Variables Privadas
  ******************************************************************************/
@@ -74,10 +78,36 @@ static uint32_t tiempo_moliendo = 0;
 static xQueueHandle handle_queue_orhi = 0;
 static ORHI_MSG_t orhi_msg;
 
+void seleccionar_seq_molido(Accion_Molido_e **seq, TIPO_SERVICIO_e serv, MODO_TRABAJO_e modo, ESTADO_TRAMPILLAS_e tramp)
+{
+	if ((serv != SIMPLE) && (serv != DOBLE)) return;
+	if ((modo != PREMOLIDO) && (modo != ONDEMAND)) return;
+	if ((tramp != NO_CAFE) && (tramp != T1CAFE) && (tramp != T1T2CAFE)) return;
 
-/*******************************************************************************
- * Funciones
- ******************************************************************************/
+	if (modo == PREMOLIDO)
+	{
+		if (serv == SIMPLE) *seq = seq_simple_premolido;
+		else                *seq = seq_doble_premolido;
+	}
+	else //modo = ONDEMAND
+	{
+		switch(tramp)
+		{
+		case NO_CAFE:
+			if (serv == SIMPLE) *seq = seq_simple_ondemand_nocafe;
+			else                *seq = seq_doble_ondemand_nocafe;
+			break;
+		case T1CAFE:
+			if (serv == SIMPLE) *seq = seq_simple_ondemand_t1;
+			else				*seq = seq_doble_ondemand_t1;
+			break;
+		case T1T2CAFE:
+			if (serv == SIMPLE) *seq = seq_simple_ondemand_t1t2;
+			else				*seq = seq_doble_ondemand_t1t2;
+			break;
+		}
+	}
+}
 
 static void incrementar_contadores(uint8_t servicio)
 {
@@ -183,6 +213,8 @@ static inline uint8_t dosis_doble(){
 
 void moler_dosificar_task(void *pvParameters)
 {
+
+
 	while (handle_queue_orhi == 0)
 	{
 		// Create the queue (N item x M bytes)
@@ -195,338 +227,12 @@ void moler_dosificar_task(void *pvParameters)
 		// check new messages on queue
 		if (xQueueReceive(handle_queue_orhi, &orhi_msg, portMAX_DELAY) == pdPASS)
 		{
-			// Leer la dosis almacenada en milésimas
+			//todo: coger dosis y secuencia correcta (secuencia en el else)
 			dosis_1c = leer_word_eeprom(DIRECC_DOSIS_1C);
 			dosis_2c = leer_word_eeprom(DIRECC_DOSIS_2C);
-			switch (orhi_msg.servicio)
+
+			if (orhi_msg.servicio == ORHI_INICIAR)
 			{
-			case DOBLE:
-				// Elegir secuencia: PREMOLIDO (FAST) o INSTANTANEO (FRESH)
-				if (orhi_msg.modo == PREMOLIDO)
-				// FAST o PREMOLIDO: dosificar y recargar trampillas
-				{
-					// Abrir motor superior y esperar a que termine
-					accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Abrir motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
-					vTaskDelay(TIEMPO_DESCARGA);
-
-					// Cerrar motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Encender Motor AC
-					_motor_ac_on_();
-
-					// Esperar "dosis_1c" milisegundos
-					tiempo_moliendo = dosis_1c;
-					escribir_ln_id_llenarbox(eTXT_C2_PREM, LINEA_2, tiempo_moliendo);
-					vTaskDelay(tiempo_moliendo);
-
-					// Apagar Motor AC
-					_motor_ac_off_();
-
-					vTaskDelay(TIEMPO_DESCARGA);
-
-					// Cerrar motor superior y esperar a que termine
-					accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Esperamos que la tarea Lcd este libre, podría estar acabando la animacion
-					// habría que asegurarse de que hay lcd si se metiera un display diferente:
-					// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-					xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Calcular tiempo de molido restante
-					tiempo_moliendo = dosis_2c - dosis_1c;
-
-					// Encender Motor AC si el tiempo restante es superior a 0
-					if (tiempo_moliendo != 0)
-					{
-						_motor_ac_on_();
-					}
-
-					escribir_ln_id_llenarbox(eTXT_C2_PREM, LINEA_1, tiempo_moliendo);
-					// Esperar "dosis_2c - dosis_1c" milisegundos
-					vTaskDelay(tiempo_moliendo);
-
-					// Apagar Motor AC
-					_motor_ac_off_();
-
-					incrementar_contadores(orhi_msg.servicio);
-
-					vTaskDelay(TIEMPO_VISUALIZACION); //Para que de tiempo a ver el valor molido
-					// Esperamos que la tarea Lcd esté libre, podría estar acabando la animacion
-					// habría que asegurarse de que hay lcd si se metiera un display diferente:
-					// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-					xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					escribir_ln_id_box(eTXT_PREG, getVar(TIPO_SERVICIO));
-				}
-				else
-				// FRESH o INSTANTANEO: Muele la dosis sin retener trampilla y dosifica.
-				{
-					if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == NO_CAFE)
-					// Dosificador vacío ya estaba en FRESH --> Moler dosis doble
-					{
-						// Encender Motor AC
-						_motor_ac_on_();
-
-						// Esperar "dosis_2c" milisegundos
-						tiempo_moliendo = dosis_2c;
-
-						escribir_ln_id_llenarbox(eTXT_C2_ONDEM, LINEA_1_2, tiempo_moliendo);
-						vTaskDelay(tiempo_moliendo);
-
-						// Apagar Motor AC
-						_motor_ac_off_();
-
-						incrementar_contadores(orhi_msg.servicio);
-
-						// Esperamos que la tarea Lcd este libre, podría estar acabando la animacion
-						// habría que asegurarse de que hay lcd si se metiera un display diferente:
-						// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-						xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-					}
-					else if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1CAFE)
-					//Café solo en trampilla inferior --> Moler diferencia
-					{
-						// Calcular tiempo de molido restante
-						tiempo_moliendo = dosis_2c - dosis_1c;
-
-						// Encender Motor AC si el tiempo restante es superior a 0
-						if (tiempo_moliendo != 0)
-						{
-							_motor_ac_on_();
-						}
-
-						escribir_ln_id_llenarbox(eTXT_C2_ONDEM, LINEA_1, tiempo_moliendo);
-						// Esperar "dosis_2c - dosis_1c" milisegundos
-						vTaskDelay(tiempo_moliendo);
-
-						// Apagar Motor AC
-						_motor_ac_off_();
-
-						// Esperamos que la tarea Lcd este libre, podría estar acabando la animacion
-						// habría que asegurarse de que hay lcd si se metiera un display diferente:
-						// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-						xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-					}
-					else if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1T2CAFE)
-					// Venimos de FAST Café arriba y abajo --> No moler nada
-					{
-						// Abrir motor superior y esperar a que termine
-						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-					}
-					// Abrir motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
-					vTaskDelay(TIEMPO_DESCARGA);
-					escribir_ln_id_box(eTXT_ONDE, getVar(TIPO_SERVICIO));
-
-					// Cerrar motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Guardar dato de dosificador vacío
-					grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
-
-					// Fin de cambio de premolido (FAST) a instantaneo (FRESH)
-				} //else FRESH o sea instantaneo
-				// Fin servicio, reset de teclado, flag fin secuencia
-				if ((xEventGroupGetBits(task_events) & EV_INTENSIVA_ON) == 0 ) //si estamos en prueba intensiva no resetea teclado
-					xQueueReset(handle_queue_teclado);						   //  para detectar cuando se quiere parar la prueba
-				xEventGroupSetBits(task_events, EV_FIN_SERV);
-				break; // case DOBLE:
-
-			case SIMPLE:
-				// Otra vez elegir secuencia: PREMOLIDO (FAST) o INSTANTANEO (FRESH)
-				if (orhi_msg.modo == PREMOLIDO)
-				// FAST o PREMOLIDO: dosificar y recargar trampillas
-				{
-					// Abrir motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));
-					vTaskDelay(TIEMPO_DESCARGA);
-
-					// Cerrar motor inferior y esperar a que termine
-					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Abrir motor superior y esperar a que termine
-					accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Preparo la dosis a sumar sobre lo que había en la trampilla
-					// superior para obtener la dosis de 1 café.
-					tiempo_moliendo = dosis_1c * 2 - dosis_2c;
-
-					// Si la dosis C2 es justo doble que C1 no muelo.
-					if (tiempo_moliendo != 0)
-					{
-						_motor_ac_on_();
-					}
-
-					escribir_ln_id_llenarbox(eTXT_C1_PREM, LINEA_2, tiempo_moliendo);
-					// Esperar "dosis_1c * 2 - dosis_2c" milisegundos
-					vTaskDelay(tiempo_moliendo);
-
-					// Apagar Motor AC
-					_motor_ac_off_();
-
-					vTaskDelay(TIEMPO_DESCARGA);
-
-					// Cerrar motor superior y esperar a que termine
-					accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-					//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
-					// habría que asegurarse de que hay lcd si se metiera un display diferente:
-					// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-					xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Valor para la trampilla superior
-					tiempo_moliendo = dosis_2c - dosis_1c;
-
-					// Si la dosis C2 es igual que C1 tiempo_moliendo es cero.
-					if (tiempo_moliendo != 0)
-					{
-						_motor_ac_on_();
-					}
-
-					escribir_ln_id_llenarbox(eTXT_C1_PREM, LINEA_1, tiempo_moliendo);
-					// Esperar "dosis_2c - dosis_1c" milisegundos
-					vTaskDelay(tiempo_moliendo);
-
-					// Apagar Motor AC
-					_motor_ac_off_();
-
-					vTaskDelay(TIEMPO_VISUALIZACION); //Para que de tiempo a ver el valor molido
-					// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
-					// habría que asegurarse de que hay lcd si se metiera un display diferente:
-					// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-					xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-
-					// Fin servicio: pantalla, contadores
-					escribir_ln_id_box(eTXT_PREG, getVar(TIPO_SERVICIO));
-					incrementar_contadores(orhi_msg.servicio);
-				}
-				else
-				// FRESH o INSTANTANEO: Muele la dosis sin retener trampilla y dosifica.
-				{
-					if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == NO_CAFE)
-					// Vacío totalmente, ya estaba en FRESH --> Moler dosis 1c
-					{
-						// Encender Motor AC
-						_motor_ac_on_();
-
-						// Esperar "dosis_1c" milisegundos
-						tiempo_moliendo = dosis_1c;
-
-						escribir_ln_id_llenarbox(eTXT_C1_ONDEM, LINEA_2, tiempo_moliendo);
-						vTaskDelay(tiempo_moliendo);
-
-						// Apagar Motor AC
-						_motor_ac_off_();
-
-						// Abrir motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						vTaskDelay(TIEMPO_DESCARGA);
-						// Esperamos que la tarea  Lcd este libre, podría estar acabando la animacion
-						// habría que asegurarse de que hay lcd si se metiera un display diferente:
-						// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-						xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-						escribir_ln_id_box(eTXT_ONDE, getVar(TIPO_SERVICIO));	// Mensaje al display
-
-						// Cerrar motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						// No se limpia pantalla en todos los casos, este si
-						incrementar_contadores(orhi_msg.servicio);
-					}
-					else if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1CAFE)
-					// Café solo en trampilla abajo --> No hay que moler
-					{
-						// Abrir motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						escribir_ln_id_box(eTXT_ONDE, getVar(TIPO_SERVICIO));	// Mensaje al display
-						vTaskDelay(TIEMPO_DESCARGA);
-
-						// Cerrar motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						// Termina la secuencia de cambio de tipo servicio
-						grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
-					}
-					else if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1T2CAFE)
-					//  Estaba lleno abajo y arriba --> Dosificar y completar dosis
-					{
-						// Abrir motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						escribir_ln_id_box(eTXT_EMPTY_BOX, getVar(TIPO_SERVICIO));  // Display caja vacia
-						vTaskDelay(TIEMPO_DESCARGA);
-
-						// Cerrar motor inferior y esperar a que termine
-						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						// Abrir motor superior y esperar a que termine
-						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						// Preparo la dosis a sumar sobre lo que había en la trampilla
-						// superior para obtener la dosis de 1 café.
-						tiempo_moliendo = dosis_1c * 2 - dosis_2c;
-
-						// Si la dosis C2 es justo doble que C1 no muelo.
-						if (tiempo_moliendo != 0)
-						{
-							_motor_ac_on_();
-						}
-
-						escribir_ln_id_llenarbox(eTXT_C1_ONDEM, LINEA_2, tiempo_moliendo);
-						// Esperar "dosis_1c * 2 - dosis_2c" milisegundos
-						vTaskDelay(tiempo_moliendo);
-
-						// Apagar Motor AC
-						_motor_ac_off_();
-
-						vTaskDelay(TIEMPO_DESCARGA);
-						// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
-						// habría que asegurarse de que hay lcd si se metiera un display diferente:
-						// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-						xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
-
-						// No limpiamos pantalla, escribimos "cambio"
-						escribir_ln_id_box(eTXT_CHAN2, getVar(TIPO_SERVICIO));
-						grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, T1CAFE);
-					}
-				}
-				// Fin servicio, reset de teclado, flag fin secuencia
-				if ((xEventGroupGetBits(task_events) & EV_INTENSIVA_ON) == 0 ) //si estamos en prueba intensiva no resetea teclado
-					xQueueReset(handle_queue_teclado);						   //  para detectar cuando se quiere parar la prueba
-				xEventGroupSetBits(task_events, EV_FIN_SERV);
-				break; //case SIMPLE:
-
-			case ORHI_INICIAR:
 				// Elegir secuencia: PREMOLIDO o INSTANTANEO
 				if (orhi_msg.modo == PREMOLIDO)
 				// PREMOLIDO: Dosificador lleno, si esta vacío lo llenamos.
@@ -542,7 +248,6 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Cerrar motor inferior y esperar a que termine
 						accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Encender Motor AC
 						_motor_ac_on_();
@@ -563,12 +268,11 @@ void moler_dosificar_task(void *pvParameters)
 
 						// Cerrar motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Esperamos que la tarea  Oled este libre, podría estar acabando la animacion
 						// habría que asegurarse de que hay lcd si se metiera un display diferente:
 						// if(lcd()) xEventGroup... o sustituir EV_LCD por EV_FINANIMACION
-			            xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
+						xEventGroupWaitBits(task_events, EV_LCD, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Calcular tiempo de molido restante
 						tiempo_moliendo = dosis_2c - dosis_1c;
@@ -598,7 +302,6 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						// Cerrar motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_CERRAR);
-						//xEventGroupWaitBits(task_events, EV_MOTOR, pdTRUE, pdFALSE, portMAX_DELAY);
 
 						// Calcular tiempo de molido restante
 						tiempo_moliendo = dosis_2c - dosis_1c;
@@ -634,12 +337,6 @@ void moler_dosificar_task(void *pvParameters)
 				else
 				// INSTANTANEO o FRESH: Dosificador debe estar vacío.
 				{
-					/*if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) != NO_CAFE)
-						// Lleno total o parcialmente, venimos de FAST
-					{
-						// Mensaje "cambio"
-						escribir_ln_id(eTXT_CAMBIO, LINEA_2, PARPADEO_NO);
-					}*/
 					if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1T2CAFE)
 					{
 						// Lleno totalmente, venimos de PREMOLIDO
@@ -654,17 +351,48 @@ void moler_dosificar_task(void *pvParameters)
 					{
 						escribir_ln_id_box(eTXT_ONDE, getVar(TIPO_SERVICIO));	// Mensaje al display
 					}
-					//xEventGroupSetBits(task_events, EV_MUTEXCONFIG);//sólo necesario al pasar a ondemand por tema de tiempos
 				}
 				// Fin servicio, reset de teclado, flag fin secuencia
 				if ((xEventGroupGetBits(task_events) & EV_INTENSIVA_ON) == 0 ) //si estamos en prueba intensiva no resetea teclado
 					xQueueReset(handle_queue_teclado);						   //  para detectar cuando se quiere parar la prueba
 				xEventGroupSetBits(task_events, EV_FIN_SERV);
-				break; // case ORHI_INICIAR:
+			}
+			else
+			{
+				Accion_Molido_e *seq_molido = &dummy_seq;
+				uint8_t idx = 0;
 
-			default:
-				break;
-			} // switch (orhi_msg.servicio)
+				seleccionar_seq_molido(&seq_molido, orhi_msg.servicio, orhi_msg.modo, leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA));
+
+				while (seq_molido[idx] != SALIR)
+				{
+					switch(seq_molido[idx])
+					{
+					case MOLIDO_INF:
+						PRINTF("Molido inferior\n");
+						break;
+					case MOLIDO_SUP:
+						PRINTF("Molido superior\n");
+						break;
+					case VACIADO_INF:
+						PRINTF("Vaciado inferior\n");
+						break;
+					case VACIADO_SUP:
+						PRINTF("Vaciado superior\n");
+						break;
+					case FINAL:
+						PRINTF("Ejecutando tareas finales - contadores, lcd...\n");
+						break;
+					case SALIR:
+						PRINTF("Salir del bucle\n");
+						break;
+					default:
+						break;
+					}
+					idx++;
+				}
+			}
 		} // if (xQueueReceive(handle_queue_orhi, &orhi_msg, portMAX_DELAY) == pdPASS)
-	} // for(;;)
+	}
+
 }
