@@ -326,12 +326,12 @@ void moler_dosificar_task(void *pvParameters)
 					else if (leer_word_eeprom(DIRECC_ESTADO_TRAMPILLA) == T1T2CAFE)
 					// Venimos de FAST Café arriba y abajo --> No moler nada
 					{
-#vaciado sup
+#vaciado_sup
 						// Abrir motor superior y esperar a que termine
 						accion_motor(MOTOR_SUPERIOR, ACCION_ABRIR);
-#fin vaciado sup
+#fin vaciado_sup
 					}
-#vaciado inf (ojo al guardar el estado de trampilla en eeprom)
+#vaciado inf (ojo al guardar el estado de trampilla en eeprom -> se mete en final)
 					// Abrir motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_ABRIR);
 
@@ -342,10 +342,10 @@ void moler_dosificar_task(void *pvParameters)
 					// Cerrar motor inferior y esperar a que termine
 					accion_motor(MOTOR_INFERIOR, ACCION_CERRAR);
 
-					// Guardar dato de dosificador vacío
-					grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
 #fin vaciado inf
 #final
+					// Guardar dato de dosificador vacío
+					grabar_word_eeprom(DIRECC_ESTADO_TRAMPILLA, NO_CAFE);
 
 					// Fin de cambio de premolido (FAST) a instantaneo (FRESH)
 				} //else FRESH o sea instantaneo

@@ -230,10 +230,10 @@ int main(void)
 	wdt_events = xEventGroupCreate();
 
 	// Crear tareas del RTOS
-	xTaskCreate(main_task,            "Tarea Principal",    configMINIMAL_STACK_SIZE + 96, NULL, main_task_PRIORITY,     NULL);
-	xTaskCreate(moler_dosificar_task, "Tarea QBA",          configMINIMAL_STACK_SIZE,      NULL, cafe_task_PRIORITY,      NULL);
-	xTaskCreate(watchdog_task,        "Tarea Watchdog",     configMINIMAL_STACK_SIZE,      NULL, watchdog_task_PRIORITY, NULL);
-	xTaskCreate(comunicacion_task,    "Tarea Comunicacion", configMINIMAL_STACK_SIZE + 96, NULL, com_task_PRIORITY,      NULL);
+	xTaskCreate(main_task,            "Tarea Principal",    configMINIMAL_STACK_SIZE +  96, NULL, main_task_PRIORITY,     NULL);
+	xTaskCreate(moler_dosificar_task, "Tarea QBA",          configMINIMAL_STACK_SIZE + 192, NULL, cafe_task_PRIORITY,      NULL);
+	xTaskCreate(watchdog_task,        "Tarea Watchdog",     configMINIMAL_STACK_SIZE,       NULL, watchdog_task_PRIORITY, NULL);
+	xTaskCreate(comunicacion_task,    "Tarea Comunicacion", configMINIMAL_STACK_SIZE +  96, NULL, com_task_PRIORITY,      NULL);
 
 	// Iniciar el scheduler
 	vTaskStartScheduler();
